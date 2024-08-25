@@ -9,9 +9,9 @@ class Program
     {
         string filePath = AppConstants.HtmlFilePath;
         string apiUrl = AppConstants.ApiUrl;
-        string outputFilePath = @"/Users/daniilvolkov/Documents/Projects/Test/ParseHtml/output.json"; 
+        
 
-        var processor = new MessageProcessor(filePath, apiUrl, outputFilePath);
+        var processor = new MessageProcessor(filePath, apiUrl, AppConstants.outputFilePath);
 
         await processor.ProcessMessagesAsync();
     }

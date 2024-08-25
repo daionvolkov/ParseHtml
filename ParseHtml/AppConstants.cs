@@ -11,8 +11,10 @@ public class AppConstants
     public const int materialType = 2;
 
     public const string ApiUrl = "https://api.example.com/endpoint";
-    public const string HtmlFilePath = @"/Users/daniilvolkov/Documents/Projects/Test/ParseHtml/messages.html";
-    
+    public const string HtmlFilePath = @"C:\Users\daion\source\repos\ParseHtml\ParseHtml\messages.html";
+    public const string outputFilePath = @"C:\Users\daion\source\repos\ParseHtml\ParseHtml\output.json";
+
+
     public const string ApplicationName = "MessageProcessorApp";
     
     public const int HttpTimeoutInSeconds = 30;
