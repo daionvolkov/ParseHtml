@@ -1,23 +1,26 @@
 using System.Text;
 using HtmlAgilityPack;
 using Microsoft.VisualBasic;
+using Models;
 using Newtonsoft.Json;
+using ParseHtml.Service;
 
 namespace ParseHtml;
 
 public class MessageProcessor
 {
     private readonly string _filePath;
-    private readonly string _apiUrl;
     private readonly string _outputFilePath;
+    private readonly MessageDataService _messageDataSerivce;
+    private readonly JsonService _jsonService;
 
 
-    public MessageProcessor(string filePath, string apiUrl, string outputFilePath)
+    public MessageProcessor(string filePath, string outputFilePath)
     {
         _filePath = filePath;
-        _apiUrl = apiUrl;
         _outputFilePath = outputFilePath;
-
+        _messageDataSerivce = new MessageDataService();
+        _jsonService = new JsonService();
     }
 
     public async Task ProcessMessagesAsync()
@@ -30,7 +33,6 @@ public class MessageProcessor
         var photoNodes = doc.DocumentNode.SelectNodes("//a[contains(@class, 'photo_wrap clearfix pull_left')]");
         var voiceNodes = doc.DocumentNode.SelectNodes("//a[contains(@class, 'media_voice_message')]");
 
-   
         if (dateNodes == null)
         {
             Console.WriteLine("Failed to find items with dates.");
@@ -39,6 +41,7 @@ public class MessageProcessor
 
         string? lastDateValue = null;
         var jsonObjects = new List<string>();
+        int messageCount = 1;
 
         for (int i = 0; i < dateNodes.Count; i++)
         {
@@ -47,49 +50,47 @@ public class MessageProcessor
 
             if (textNodes != null && i < textNodes.Count)
             {
-                var jsonData = ProcessTextNode(textNodes[i], lastDateValue);
+                var jsonData = ProcessTextNode(textNodes[i], lastDateValue, messageCount);
                 if (jsonData != null) jsonObjects.Add(jsonData);
+                messageCount ++;
             }
 
             if (photoNodes != null && i < photoNodes.Count)
             {
-                var jsonData = ProcessPhotoNode(photoNodes[i], lastDateValue);
+                var jsonData = ProcessPhotoNode(photoNodes[i], lastDateValue, messageCount);
                 if (jsonData != null) jsonObjects.Add(jsonData);
+                messageCount ++;
             }
 
             if (voiceNodes != null && i < voiceNodes.Count)
             {
-                var jsonData = ProcessVoiceNode(voiceNodes[i], lastDateValue);
+                var jsonData = ProcessVoiceNode(voiceNodes[i], lastDateValue, messageCount);
                 if (jsonData != null) jsonObjects.Add(jsonData);
+                messageCount ++;
             }
         }
-
-        SaveJsonToFile(jsonObjects, _outputFilePath);
+        _jsonService.SaveJsonToFile(jsonObjects, _outputFilePath);
     }
 
 
-    private string? ProcessTextNode(HtmlNode textNode, string? date)
+    private string? ProcessTextNode(HtmlNode textNode, string? date, int messageCount)
     {
         string textContent = textNode.InnerText.Trim();
         if (!string.IsNullOrWhiteSpace(textContent))
         {
-            var data = new
-            {
-                Date = date,
-                Content = textContent
-            };
+            var dataContent = _messageDataSerivce.CreateDataObject(date, textContent, messageCount);
 
-            string jsonData = JsonConvert.SerializeObject(data, Formatting.Indented);
+            string jsonData = JsonConvert.SerializeObject(dataContent, Formatting.Indented);
             Console.WriteLine("Formed JSON:");
+            
             //Console.WriteLine(jsonData);
-
-            //SendJsonToApi(jsonData);
+            //_jsonService.SendJsonToApi(jsonData);
             return jsonData;
         }
         return null;
     }
 
-    private string? ProcessPhotoNode(HtmlNode photoNode, string? date)
+    private string? ProcessPhotoNode(HtmlNode photoNode, string? date, int messageCount)
     {
         string photoHref = photoNode.GetAttributeValue("href", null);
         if (!string.IsNullOrEmpty(photoHref))
@@ -108,24 +109,20 @@ public class MessageProcessor
             {
                 string base64Image = ConvertMediaToBase64(photoPath, "image");
 
-                var data = new
-                {
-                    Date = date,
-                    Content = base64Image
-                };
-
-                string jsonData = JsonConvert.SerializeObject(data, Formatting.Indented);
+                var dateContent = _messageDataSerivce.CreateDataObject(date, base64Image, messageCount);
+            
+                string jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
                 Console.WriteLine("Formed JSON:");
-                //Console.WriteLine(jsonData);
 
-                //SendJsonToApi(jsonData);
+                //Console.WriteLine(jsonData);
+                //_jsonService.SendJsonToApi(jsonData);
                 return jsonData;
             }
         }
         return null;
     }
 
-    private string? ProcessVoiceNode(HtmlNode voiceNode, string? date)
+    private string? ProcessVoiceNode(HtmlNode voiceNode, string? date, int messageCount)
     {
         string voiceHref = voiceNode.GetAttributeValue("href", null);
         if (!string.IsNullOrEmpty(voiceHref))
@@ -140,58 +137,20 @@ public class MessageProcessor
             {
                 string base64Voice = ConvertMediaToBase64(voicePath, "audio");
 
-                var data = new
-                {
-                    Date = date,
-                    Content = base64Voice
-                };
+                var dateContent = _messageDataSerivce.CreateDataObject(date, base64Voice, messageCount);
 
-                string jsonData = JsonConvert.SerializeObject(data, Formatting.Indented);
+                string jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
                 Console.WriteLine("Formed JSON:");
+                
                 //Console.WriteLine(jsonData);
-
-                //SendJsonToApi(jsonData);
+                //_jsonService.SendJsonToApi(jsonData);
                 return jsonData;
             }
         }
         return null;
     }
-    private async void SendJsonToApi(string jsonData)
-    {
-        using (var client = new HttpClient())
-        {
-            var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
-            var response = await client.PutAsync(_apiUrl, content);
-
-            if (response.IsSuccessStatusCode)
-            {
-                Console.WriteLine("The data was successfully sent to the API.Failed to find items with dates.");
-            }
-            else
-            {
-                Console.WriteLine($"Error when sending data: {response.StatusCode} - {response.ReasonPhrase}");
-            }
-        }
-    }
-
-    private void SaveJsonToFile(IEnumerable<string> jsonObjects, string _outputFilePath)
-    {
-        if (string.IsNullOrEmpty(_outputFilePath))
-        {
-            Console.WriteLine("Error: The path for saving JSON objects is not specified.");
-            return;
-        }
-        try
-        {
-            File.WriteAllLines(_outputFilePath, jsonObjects);
-            Console.WriteLine($"JSON objects have been successfully saved to a file: {_outputFilePath}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error when saving JSON objects to a file: {ex.Message}");
-        }
-    }
-
+    
+    
 
     private string ConvertMediaToBase64(string mediaPath, string mediaType)
     {
@@ -219,18 +178,5 @@ public class MessageProcessor
 
         return $"{mimeType}{base64String}";
     }
-
-
 }
 
-
-// Token = AppConstants.token,
-//                     UserId = AppConstants.userId,
-//                     Title = $"{AppConstants.title} {messageCount + i}",
-//                     TargetLanguageId = AppConstants.targetLanguageId,
-//                     WrittenLanguageId = AppConstants.writtenLanguageId,
-//                     CategoryId = AppConstants.categoryId,
-//                     PublishDate = currentDateValue,
-//                     Content = contextContent,
-
-//                     MaterialType = AppConstants.materialType
