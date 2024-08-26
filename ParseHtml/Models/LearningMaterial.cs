@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Models
 {
-    public class ContentData
+    public class LearningMaterial
     {
         public int UserId { get; set;}
         public string? Title { get; set; }

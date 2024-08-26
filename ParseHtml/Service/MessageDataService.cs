@@ -6,7 +6,7 @@ public class MessageDataService
 {
     public MessageData CreateDataObject(string? date, string content, int messageCount)
     {
-        var contentData = new ContentData 
+        var learningMaterial = new LearningMaterial 
         {
             UserId = AppConstants.userId,
             Title = $"{AppConstants.title} {messageCount}",
@@ -20,8 +20,8 @@ public class MessageDataService
 
         return new MessageData
         {
-            Token = AppConstants.token, 
-            ContentDatas = contentData
+            Token = AppConstants.token,
+            LearningMaterial = learningMaterial
             
         };
     }

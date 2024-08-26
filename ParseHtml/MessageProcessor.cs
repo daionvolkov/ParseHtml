@@ -13,12 +13,14 @@ public class MessageProcessor
     private readonly string _outputFilePath;
     private readonly MessageDataService _messageDataSerivce;
     private readonly JsonService _jsonService;
+    private readonly string _apiUrl;
 
 
-    public MessageProcessor(string filePath, string outputFilePath)
+    public MessageProcessor(string filePath, string apiUrl, string outputFilePath)
     {
         _filePath = filePath;
         _outputFilePath = outputFilePath;
+        _apiUrl = apiUrl;
         _messageDataSerivce = new MessageDataService();
         _jsonService = new JsonService();
     }
@@ -52,21 +54,21 @@ public class MessageProcessor
             {
                 var jsonData = ProcessTextNode(textNodes[i], lastDateValue, messageCount);
                 if (jsonData != null) jsonObjects.Add(jsonData);
-                messageCount ++;
+                messageCount++;
             }
 
             if (photoNodes != null && i < photoNodes.Count)
             {
                 var jsonData = ProcessPhotoNode(photoNodes[i], lastDateValue, messageCount);
                 if (jsonData != null) jsonObjects.Add(jsonData);
-                messageCount ++;
+                messageCount++;
             }
 
             if (voiceNodes != null && i < voiceNodes.Count)
             {
                 var jsonData = ProcessVoiceNode(voiceNodes[i], lastDateValue, messageCount);
                 if (jsonData != null) jsonObjects.Add(jsonData);
-                messageCount ++;
+                messageCount++;
             }
         }
         _jsonService.SaveJsonToFile(jsonObjects, _outputFilePath);
@@ -82,7 +84,7 @@ public class MessageProcessor
 
             string jsonData = JsonConvert.SerializeObject(dataContent, Formatting.Indented);
             Console.WriteLine("Formed JSON:");
-            
+
             //Console.WriteLine(jsonData);
             //_jsonService.SendJsonToApi(jsonData);
             return jsonData;
@@ -110,7 +112,7 @@ public class MessageProcessor
                 string base64Image = ConvertMediaToBase64(photoPath, "image");
 
                 var dateContent = _messageDataSerivce.CreateDataObject(date, base64Image, messageCount);
-            
+
                 string jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
                 Console.WriteLine("Formed JSON:");
 
@@ -141,7 +143,7 @@ public class MessageProcessor
 
                 string jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
                 Console.WriteLine("Formed JSON:");
-                
+
                 //Console.WriteLine(jsonData);
                 //_jsonService.SendJsonToApi(jsonData);
                 return jsonData;
@@ -149,8 +151,8 @@ public class MessageProcessor
         }
         return null;
     }
-    
-    
+
+
 
     private string ConvertMediaToBase64(string mediaPath, string mediaType)
     {

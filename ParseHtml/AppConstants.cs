@@ -12,13 +12,13 @@ public class AppConstants
 
     public const string ApiUrl = "https://api.example.com/endpoint";
 
-    #if WINDOWS
+    
         public const string htmlFilePath = @"C:\Users\daion\source\repos\ParseHtml\ParseHtml\messages.html";
         public const string outputFilePath = @"C:\Users\daion\source\repos\ParseHtml\ParseHtml\output.json";
-    #endif
     
-    public const string htmlFilePath = @"/Users/daniilvolkov/Documents/GitHub/ParseHtml/ParseHtml/messages.html";
-    public const string outputFilePath = @"/Users/daniilvolkov/Documents/GitHub/ParseHtml/ParseHtml/output.json";
+    
+    //public const string htmlFilePath = @"/Users/daniilvolkov/Documents/GitHub/ParseHtml/ParseHtml/messages.html";
+    //public const string outputFilePath = @"/Users/daniilvolkov/Documents/GitHub/ParseHtml/ParseHtml/output.json";
 
 
     public const string ApplicationName = "MessageProcessorApp";

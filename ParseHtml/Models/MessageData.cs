@@ -5,7 +5,7 @@ namespace Models
     public class MessageData
     {
         public string? Token { get; set;}
-        public ContentData? ContentDatas {get; set;}
+        public LearningMaterial? LearningMaterial {get; set;}
         
         
     }
