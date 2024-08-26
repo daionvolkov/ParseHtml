@@ -13,14 +13,13 @@ public class MessageProcessor
     private readonly string _outputFilePath;
     private readonly MessageDataService _messageDataSerivce;
     private readonly JsonService _jsonService;
-    private readonly string _apiUrl;
 
 
-    public MessageProcessor(string filePath, string apiUrl, string outputFilePath)
+
+    public MessageProcessor(string filePath, string outputFilePath)
     {
         _filePath = filePath;
         _outputFilePath = outputFilePath;
-        _apiUrl = apiUrl;
         _messageDataSerivce = new MessageDataService();
         _jsonService = new JsonService();
     }
@@ -80,13 +79,14 @@ public class MessageProcessor
         string textContent = textNode.InnerText.Trim();
         if (!string.IsNullOrWhiteSpace(textContent))
         {
+
             var dataContent = _messageDataSerivce.CreateDataObject(date, textContent, messageCount);
 
             string jsonData = JsonConvert.SerializeObject(dataContent, Formatting.Indented);
             Console.WriteLine("Formed JSON:");
 
             //Console.WriteLine(jsonData);
-            //_jsonService.SendJsonToApi(jsonData);
+            _jsonService.SendJsonToApi(jsonData);
             return jsonData;
         }
         return null;
@@ -117,7 +117,7 @@ public class MessageProcessor
                 Console.WriteLine("Formed JSON:");
 
                 //Console.WriteLine(jsonData);
-                //_jsonService.SendJsonToApi(jsonData);
+                _jsonService.SendJsonToApi(jsonData);
                 return jsonData;
             }
         }
@@ -127,36 +127,86 @@ public class MessageProcessor
     private string? ProcessVoiceNode(HtmlNode voiceNode, string? date, int messageCount)
     {
         string voiceHref = voiceNode.GetAttributeValue("href", null);
-        if (!string.IsNullOrEmpty(voiceHref))
+
+        if (string.IsNullOrEmpty(voiceHref))
         {
-            string? directoryPath = Path.GetDirectoryName(_filePath);
-            if (string.IsNullOrEmpty(directoryPath))
-            {
-                directoryPath = Directory.GetCurrentDirectory();
-            }
-            string voicePath = Path.Combine(directoryPath, voiceHref);
-            if (File.Exists(voicePath))
-            {
-                string base64Voice = ConvertMediaToBase64(voicePath, "audio");
-
-                var dateContent = _messageDataSerivce.CreateDataObject(date, base64Voice, messageCount);
-
-                string jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
-                Console.WriteLine("Formed JSON:");
-
-                //Console.WriteLine(jsonData);
-                //_jsonService.SendJsonToApi(jsonData);
-                return jsonData;
-            }
+            Console.WriteLine("No href attribute found for voice node.");
+            return null;
         }
-        return null;
+
+        string? directoryPath = Path.GetDirectoryName(_filePath);
+        if (string.IsNullOrEmpty(directoryPath))
+        {
+            directoryPath = Directory.GetCurrentDirectory();
+        }
+
+        string voicePath = Path.Combine(directoryPath, voiceHref);
+
+        if (!File.Exists(voicePath))
+        {
+            Console.WriteLine($"Voice file not found: {voicePath}");
+            return null;
+        }
+
+        string base64Voice;
+        try
+        {
+            base64Voice = ConvertMediaToBase64(voicePath, "audio");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error converting media to Base64: {ex.Message}");
+            return null;
+        }
+
+        var dateContent = _messageDataSerivce.CreateDataObject(date, base64Voice, messageCount);
+
+        string jsonData;
+        try
+        {
+            jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error serializing data to JSON: {ex.Message}");
+            return null;
+        }
+
+        Console.WriteLine("Formed JSON:");
+        //Console.WriteLine(jsonData);
+
+        try
+        {
+            _jsonService.SendJsonToApi(jsonData);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending JSON to API: {ex.Message}");
+            return null;
+        }
+
+        return jsonData;
     }
 
 
 
     private string ConvertMediaToBase64(string mediaPath, string mediaType)
     {
-        byte[] mediaBytes = File.ReadAllBytes(mediaPath);
+        if (string.IsNullOrWhiteSpace(mediaPath) || !File.Exists(mediaPath))
+        {
+            throw new FileNotFoundException("The media file does not exist.", mediaPath);
+        }
+
+        byte[] mediaBytes;
+        try
+        {
+            mediaBytes = File.ReadAllBytes(mediaPath);
+        }
+        catch (Exception ex)
+        {
+            throw new IOException($"Error reading the media file: {ex.Message}", ex);
+        }
+
         string base64String = Convert.ToBase64String(mediaBytes);
 
         string extension = Path.GetExtension(mediaPath).ToLowerInvariant();

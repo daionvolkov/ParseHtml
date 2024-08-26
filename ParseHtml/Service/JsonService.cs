@@ -4,11 +4,6 @@ namespace ParseHtml.Service;
 
 public class JsonService
 {
-    private readonly string _apiUrl;
-
-    public JsonService(string apiUrl) {
-        _apiUrl = apiUrl;
-    }
 
     public JsonService() {}
 
@@ -17,11 +12,11 @@ public class JsonService
         using (var client = new HttpClient())
         {
             var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
-            var response = await client.PutAsync(_apiUrl, content);
+            var response = await client.PutAsync(AppConstants.ApiUrl, content);
 
             if (response.IsSuccessStatusCode)
             {
-                Console.WriteLine("The data was successfully sent to the API.Failed to find items with dates.");
+                Console.WriteLine("The data was successfully sent to the API");
             }
             else
             {

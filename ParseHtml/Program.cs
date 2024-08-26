@@ -8,10 +8,10 @@ class Program
     static async Task Main(string[] args)
     {
         string filePath = AppConstants.htmlFilePath;
-        string apiUrl = AppConstants.ApiUrl;
+        
         
 
-        var processor = new MessageProcessor(filePath, apiUrl, AppConstants.outputFilePath);
+        var processor = new MessageProcessor(filePath, AppConstants.outputFilePath);
 
         await processor.ProcessMessagesAsync();
     }
