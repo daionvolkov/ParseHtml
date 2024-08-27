@@ -53,6 +53,4 @@ public class JsonService
             Console.WriteLine($"Error when saving JSON objects to a file: {ex.Message}");
         }
     }
-
-
 }

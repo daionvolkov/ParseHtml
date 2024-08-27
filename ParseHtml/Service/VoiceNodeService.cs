@@ -3,50 +3,52 @@ using Newtonsoft.Json;
 
 namespace ParseHtml.Service
 {
-    public class PhotoNodeService
+    public class VoiceNodeService
     {
+        private readonly string _filePath = AppConstants.htmlFilePath;
         private readonly MessageDataService _messageDataService;
         private readonly JsonService _jsonService;
         private readonly MediaConverService _mediaConverService;
-        private readonly string _filePath = AppConstants.htmlFilePath;
+        
 
-        public PhotoNodeService()
+        public VoiceNodeService()
         {
             _jsonService = new JsonService();
             _messageDataService = new MessageDataService();
             _mediaConverService = new MediaConverService();
         }
 
-        public void ProcessPhotoNode(HtmlNode bodyNode, string? lastDateValue, List<string> jsonObjects, ref int messageCount)
+        public void ProcessVoiceNode(HtmlNode bodyNode, string? lastDateValue, List<string> jsonObjects, ref int messageCount)
         {
-            var photoAnchorNode = bodyNode.SelectSingleNode(".//a[contains(@class, 'photo_wrap clearfix pull_left')]");
-            if (photoAnchorNode != null)
+            var voiceNode = bodyNode.SelectSingleNode(".//a[contains(@class, 'media_voice_message')]");
+
+            if (voiceNode != null)
             {
-                string photoHref = photoAnchorNode.GetAttributeValue("href", null);
-                if (!string.IsNullOrEmpty(photoHref))
+                string voiceHref = voiceNode.GetAttributeValue("href", null);
+                if (!string.IsNullOrEmpty(voiceHref))
                 {
-                    var jsonData = ProcessPhotoNode(photoAnchorNode, lastDateValue, messageCount, photoHref);
+                    var jsonData = ProcessVoiceNode(voiceNode, lastDateValue, messageCount, voiceHref);
                     if (jsonData != null) jsonObjects.Add(jsonData);
                     messageCount++;
                 }
             }
         }
 
-
-        private string? ProcessPhotoNode(HtmlNode photoNode, string? date, int messageCount, string mediaPath)
+        private string? ProcessVoiceNode(HtmlNode voiceNode, string? date, int messageCount, string mediaPath)
         {
             string? directoryPath = Path.GetDirectoryName(_filePath);
             if (string.IsNullOrEmpty(directoryPath))
             {
                 directoryPath = Directory.GetCurrentDirectory();
             }
-            string fullPhotoPath = Path.Combine(directoryPath, mediaPath);
 
-            if (File.Exists(fullPhotoPath))
+            string fullVoicePath = Path.Combine(directoryPath, mediaPath);
+
+            if (File.Exists(fullVoicePath))
             {
-                string base64Photo = _mediaConverService.ConvertMediaToBase64(fullPhotoPath, "image");
+                string base64Voice = _mediaConverService.ConvertMediaToBase64(fullVoicePath, "audio");
 
-                var dateContent = _messageDataService.CreateDataObject(date, base64Photo, messageCount);
+                var dateContent = _messageDataService.CreateDataObject(date, base64Voice, messageCount);
                 string jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
                 Console.WriteLine("Formed JSON:");
 
@@ -55,6 +57,5 @@ namespace ParseHtml.Service
             }
             return null;
         }
-
     }
 }

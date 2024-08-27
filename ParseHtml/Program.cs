@@ -5,14 +5,12 @@ using ParseHtml;
 
 class Program
 {
-    static async Task Main(string[] args)
+    static void Main()
     {
         string filePath = AppConstants.htmlFilePath;
-        
-        
 
         var processor = new MessageProcessor(filePath, AppConstants.outputFilePath);
 
-        await processor.ProcessMessagesAsync();
+        processor.ProcessMessages();
     }
 }

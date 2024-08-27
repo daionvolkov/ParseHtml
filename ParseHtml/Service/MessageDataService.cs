@@ -11,16 +11,13 @@ public class MessageDataService
             date = "01.01.2024 01:01:01 UTC+02:00";
         }
         
-
         string iso8601Date = "";
         string format = "dd.MM.yyyy HH:mm:ss 'UTC'K";
         
-        try {
-            
+        try 
+        {
             DateTimeOffset parsedDate = DateTimeOffset.ParseExact(date, format, CultureInfo.InvariantCulture);
             iso8601Date = parsedDate.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
-            
-
         }
         catch(FormatException ex)
         {
@@ -41,6 +38,7 @@ public class MessageDataService
             MaterialType = AppConstants.materialType,
             Tags = AppConstants.hashtag,
         };
+
 
         return new MessageData
         {

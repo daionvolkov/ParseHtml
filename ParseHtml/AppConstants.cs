@@ -11,11 +11,13 @@ public class AppConstants
     public const int materialType = 2;
     public const string hashtag = "musicofhebrew";
 
+    //public const string ApiUrl = "http://tivaliclub.com:8090/api/LearningMaterials";
     public const string ApiUrl = "https://localhost:44398/api/LearningMaterials";
 
-    
-    
-        public const string htmlFilePath = @"C:\Users\daion\source\repos\ParseHtml\ParseHtml\messages.html";
+
+
+
+    public const string htmlFilePath = @"C:\Users\daion\source\repos\ParseHtml\ParseHtml\messages.html";
         public const string outputFilePath = @"C:\Users\daion\source\repos\ParseHtml\ParseHtml\output.json";
     
 
