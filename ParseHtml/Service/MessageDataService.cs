@@ -38,7 +38,8 @@ public class MessageDataService
             CategoryId = AppConstants.categoryId,
             PublishDate = iso8601Date,
             Content = content,
-            MaterialType = AppConstants.materialType
+            MaterialType = AppConstants.materialType,
+            Tags = AppConstants.hashtag,
         };
 
         return new MessageData

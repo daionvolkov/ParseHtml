@@ -5,23 +5,33 @@ namespace ParseHtml.Service;
 public class JsonService
 {
 
-    public JsonService() {}
+    public JsonService() { }
 
-    public async void SendJsonToApi(string jsonData)
+    public async Task SendJsonToApi(string jsonData)
     {
-        using (var client = new HttpClient())
+        try
         {
-            var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
-            var response = await client.PutAsync(AppConstants.ApiUrl, content);
+            using (var client = new HttpClient())
+            {
+                var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+               
+                var response = await client.PutAsync(AppConstants.ApiUrl, content);
 
-            if (response.IsSuccessStatusCode)
-            {
-                Console.WriteLine("The data was successfully sent to the API");
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"Failed to send data: {response.StatusCode}");
+                    string responseBody = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Response Body: {responseBody}");
+                }
+                else
+                {
+                    Console.WriteLine("Data sent successfully.");
+                }
             }
-            else
-            {
-                Console.WriteLine($"Error when sending data: {response.StatusCode} - {response.ReasonPhrase}");
-            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception occurred: {ex.Message}");
         }
     }
 

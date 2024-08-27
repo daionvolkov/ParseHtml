@@ -15,5 +15,6 @@ namespace Models
         public string? PublishDate { get; set; }
         public string? Content { get; set; }
         public int MaterialType { get; set; }
+        public string? Tags { get; set; }
     }
 }

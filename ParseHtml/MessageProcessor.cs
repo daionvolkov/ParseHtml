@@ -13,6 +13,9 @@ public class MessageProcessor
     private readonly string _outputFilePath;
     private readonly MessageDataService _messageDataSerivce;
     private readonly JsonService _jsonService;
+    private readonly CheckData _checkData;
+    private readonly TextNodeService _textNodeService;
+    private readonly PhotoNodeService _photoNodeService;
 
 
 
@@ -22,6 +25,9 @@ public class MessageProcessor
         _outputFilePath = outputFilePath;
         _messageDataSerivce = new MessageDataService();
         _jsonService = new JsonService();
+        _checkData = new CheckData();
+        _textNodeService = new TextNodeService();
+        _photoNodeService = new PhotoNodeService();
     }
 
     public async Task ProcessMessagesAsync()
@@ -29,14 +35,12 @@ public class MessageProcessor
         var doc = new HtmlDocument();
         doc.Load(_filePath);
 
-        var dateNodes = doc.DocumentNode.SelectNodes("//div[contains(@class, 'pull_right date details')]");
-        var textNodes = doc.DocumentNode.SelectNodes("//div[contains(@class, 'text')]");
-        var photoNodes = doc.DocumentNode.SelectNodes("//a[contains(@class, 'photo_wrap clearfix pull_left')]");
-        var voiceNodes = doc.DocumentNode.SelectNodes("//a[contains(@class, 'media_voice_message')]");
+        // Находим все элементы <div class="body">
+        var bodyNodes = doc.DocumentNode.SelectNodes("//div[contains(@class, 'body')]");
 
-        if (dateNodes == null)
+        if (bodyNodes == null)
         {
-            Console.WriteLine("Failed to find items with dates.");
+            Console.WriteLine("Failed to find items with class 'body'.");
             return;
         }
 
@@ -44,34 +48,95 @@ public class MessageProcessor
         var jsonObjects = new List<string>();
         int messageCount = 1;
 
-        for (int i = 0; i < dateNodes.Count; i++)
+        foreach (var bodyNode in bodyNodes)
         {
-            string currentDateValue = dateNodes[i].GetAttributeValue("title", null);
-            lastDateValue = currentDateValue ?? lastDateValue;
+            var fromNameNode = bodyNode.SelectSingleNode(".//div[contains(@class, 'from_name')]");
 
-            if (textNodes != null && i < textNodes.Count)
+  
+            if (fromNameNode == null || fromNameNode.InnerText.Trim().Equals("N", StringComparison.OrdinalIgnoreCase))
             {
-                var jsonData = ProcessTextNode(textNodes[i], lastDateValue, messageCount);
-                if (jsonData != null) jsonObjects.Add(jsonData);
-                messageCount++;
-            }
+                
+                var dateNode = bodyNode.SelectSingleNode(".//div[contains(@class, 'pull_right date details')]");
+                string currentDateValue = dateNode?.GetAttributeValue("title", null);
+                lastDateValue = currentDateValue ?? lastDateValue;
 
-            if (photoNodes != null && i < photoNodes.Count)
-            {
-                var jsonData = ProcessPhotoNode(photoNodes[i], lastDateValue, messageCount);
-                if (jsonData != null) jsonObjects.Add(jsonData);
-                messageCount++;
-            }
+                
+                var textNode = bodyNode.SelectSingleNode(".//div[contains(@class, 'text')]");
+                if (textNode != null)
+                {
+                    var jsonData = ProcessTextNode(textNode, lastDateValue, messageCount);
+                    if (jsonData != null) jsonObjects.Add(jsonData);
+                    messageCount++;
+                }
 
-            if (voiceNodes != null && i < voiceNodes.Count)
-            {
-                var jsonData = ProcessVoiceNode(voiceNodes[i], lastDateValue, messageCount);
-                if (jsonData != null) jsonObjects.Add(jsonData);
-                messageCount++;
+                var photoAnchorNode = bodyNode.SelectSingleNode(".//a[contains(@class, 'photo_wrap clearfix pull_left')]");
+                if (photoAnchorNode != null)
+                {
+                    string photoHref = photoAnchorNode.GetAttributeValue("href", null);
+                    if (!string.IsNullOrEmpty(photoHref))
+                    {
+                        var jsonData = ProcessPhotoNode(photoAnchorNode, lastDateValue, messageCount, photoHref);
+                        if (jsonData != null) jsonObjects.Add(jsonData);
+                        messageCount++;
+                    }
+                }
+
+          
+                var voiceNode = bodyNode.SelectSingleNode(".//a[contains(@class, 'media_voice_message')]");
+                if (voiceNode != null)
+                {
+                    string voiceHref = voiceNode.GetAttributeValue("href", null);
+                    if (!string.IsNullOrEmpty(voiceHref))
+                    {
+                        var jsonData = ProcessVoiceNode(voiceNode, lastDateValue, messageCount, voiceHref);
+                        if (jsonData != null) jsonObjects.Add(jsonData);
+                        messageCount++;
+                    }
+                }
+                await Task.Delay(500);
             }
         }
+
         _jsonService.SaveJsonToFile(jsonObjects, _outputFilePath);
     }
+
+
+
+    private string? ProcessVoiceNode(HtmlNode voiceNode, string? date, int messageCount, string mediaPath)
+    {
+        string? directoryPath = Path.GetDirectoryName(_filePath);
+        if (string.IsNullOrEmpty(directoryPath))
+        {
+            directoryPath = Directory.GetCurrentDirectory();
+        }
+        string fullVoicePath = Path.Combine(directoryPath, mediaPath);
+
+        if (File.Exists(fullVoicePath))
+        {
+            string base64Voice = ConvertMediaToBase64(fullVoicePath, "audio");
+
+            var dateContent = _messageDataSerivce.CreateDataObject(date, base64Voice, messageCount);
+            string jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
+            Console.WriteLine("Formed JSON:");
+
+       
+            _jsonService.SendJsonToApi(jsonData);
+            return jsonData;
+        }
+        return null;
+    }
+
+    public void ProcessTextNode(HtmlNode bodyNode, string? lastDateValue, List<string> jsonObjects, ref int messageCount)
+    {
+        var textNode = bodyNode.SelectSingleNode(".//div[contains(@class, 'text')]");
+        if (textNode != null)
+        {
+            var jsonData = ProcessTextNode(textNode, lastDateValue, messageCount);
+            if (jsonData != null) jsonObjects.Add(jsonData);
+            messageCount++;
+        }
+    }
+
 
 
     private string? ProcessTextNode(HtmlNode textNode, string? date, int messageCount)
@@ -81,116 +146,21 @@ public class MessageProcessor
         {
 
             var dataContent = _messageDataSerivce.CreateDataObject(date, textContent, messageCount);
-
             string jsonData = JsonConvert.SerializeObject(dataContent, Formatting.Indented);
             Console.WriteLine("Formed JSON:");
 
+
             //Console.WriteLine(jsonData);
-            _jsonService.SendJsonToApi(jsonData);
+            _ = _jsonService.SendJsonToApi(jsonData);
+
             return jsonData;
         }
         return null;
     }
 
-    private string? ProcessPhotoNode(HtmlNode photoNode, string? date, int messageCount)
-    {
-        string photoHref = photoNode.GetAttributeValue("href", null);
-        if (!string.IsNullOrEmpty(photoHref))
-        {
-            string? directoryPath = Path.GetDirectoryName(_filePath);
 
 
-            if (string.IsNullOrEmpty(directoryPath))
-            {
-                directoryPath = Directory.GetCurrentDirectory();
-            }
-            string photoPath = Path.Combine(directoryPath, photoHref);
-
-
-            if (File.Exists(photoPath))
-            {
-                string base64Image = ConvertMediaToBase64(photoPath, "image");
-
-                var dateContent = _messageDataSerivce.CreateDataObject(date, base64Image, messageCount);
-
-                string jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
-                Console.WriteLine("Formed JSON:");
-
-                //Console.WriteLine(jsonData);
-                _jsonService.SendJsonToApi(jsonData);
-                return jsonData;
-            }
-        }
-        return null;
-    }
-
-    private string? ProcessVoiceNode(HtmlNode voiceNode, string? date, int messageCount)
-    {
-        string voiceHref = voiceNode.GetAttributeValue("href", null);
-
-        if (string.IsNullOrEmpty(voiceHref))
-        {
-            Console.WriteLine("No href attribute found for voice node.");
-            return null;
-        }
-
-        string? directoryPath = Path.GetDirectoryName(_filePath);
-        if (string.IsNullOrEmpty(directoryPath))
-        {
-            directoryPath = Directory.GetCurrentDirectory();
-        }
-
-        string voicePath = Path.Combine(directoryPath, voiceHref);
-
-        if (!File.Exists(voicePath))
-        {
-            Console.WriteLine($"Voice file not found: {voicePath}");
-            return null;
-        }
-
-        string base64Voice;
-        try
-        {
-            base64Voice = ConvertMediaToBase64(voicePath, "audio");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error converting media to Base64: {ex.Message}");
-            return null;
-        }
-
-        var dateContent = _messageDataSerivce.CreateDataObject(date, base64Voice, messageCount);
-
-        string jsonData;
-        try
-        {
-            jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error serializing data to JSON: {ex.Message}");
-            return null;
-        }
-
-        Console.WriteLine("Formed JSON:");
-        //Console.WriteLine(jsonData);
-
-        try
-        {
-            _jsonService.SendJsonToApi(jsonData);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error sending JSON to API: {ex.Message}");
-            return null;
-        }
-
-        return jsonData;
-    }
-
-
-
-    private string ConvertMediaToBase64(string mediaPath, string mediaType)
+    public string ConvertMediaToBase64(string mediaPath, string mediaType)
     {
         if (string.IsNullOrWhiteSpace(mediaPath) || !File.Exists(mediaPath))
         {
@@ -230,5 +200,46 @@ public class MessageProcessor
 
         return $"{mimeType}{base64String}";
     }
+
+
+    public void ProcessPhotoNode(HtmlNode bodyNode, string? lastDateValue, List<string> jsonObjects, ref int messageCount)
+    {
+        var photoAnchorNode = bodyNode.SelectSingleNode(".//a[contains(@class, 'photo_wrap clearfix pull_left')]");
+        if (photoAnchorNode != null)
+        {
+            string photoHref = photoAnchorNode.GetAttributeValue("href", null);
+            if (!string.IsNullOrEmpty(photoHref))
+            {
+                var jsonData = ProcessPhotoNode(photoAnchorNode, lastDateValue, messageCount, photoHref);
+                if (jsonData != null) jsonObjects.Add(jsonData);
+                messageCount++;
+            }
+        }
+    }
+
+
+    private string? ProcessPhotoNode(HtmlNode photoNode, string? date, int messageCount, string mediaPath)
+    {
+        string? directoryPath = Path.GetDirectoryName(_filePath);
+        if (string.IsNullOrEmpty(directoryPath))
+        {
+            directoryPath = Directory.GetCurrentDirectory();
+        }
+        string fullPhotoPath = Path.Combine(directoryPath, mediaPath);
+
+        if (File.Exists(fullPhotoPath))
+        {
+            string base64Photo = ConvertMediaToBase64(fullPhotoPath, "image");
+
+            var dateContent = _messageDataSerivce.CreateDataObject(date, base64Photo, messageCount);
+            string jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
+            Console.WriteLine("Formed JSON:");
+
+            _jsonService.SendJsonToApi(jsonData);
+            return jsonData;
+        }
+        return null;
+    }
+
 }
 
