@@ -7,20 +7,24 @@ public class JsonService
 
     public JsonService() { }
 
-    public async Task SendJsonToApi(string jsonData)
+    public void SendJsonToApi(string jsonData)
     {
         try
         {
             using (var client = new HttpClient())
             {
-                var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
-               
-                var response = await client.PutAsync(AppConstants.ApiUrl, content);
+                var request = new HttpRequestMessage(HttpMethod.Put, AppConstants.ApiUrl)
+                {
+                    Content = new StringContent(jsonData, Encoding.UTF8, "application/json")
+                };
+
+                HttpResponseMessage response = client.Send(request);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     Console.WriteLine($"Failed to send data: {response.StatusCode}");
-                    string responseBody = await response.Content.ReadAsStringAsync();
+
+                    string responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult(); 
                     Console.WriteLine($"Response Body: {responseBody}");
                 }
                 else
@@ -29,12 +33,17 @@ public class JsonService
                 }
             }
         }
+        catch (HttpRequestException httpEx)
+        {
+            Console.WriteLine($"Request error: {httpEx.ToString()}");
+        }
+
         catch (Exception ex)
         {
-            Console.WriteLine($"Exception occurred: {ex.Message}");
+            Console.WriteLine($"Exception occurred: {ex.ToString()}");
         }
+     
     }
-
 
     public void SaveJsonToFile(IEnumerable<string> jsonObjects, string _outputFilePath)
     {

@@ -9,7 +9,7 @@ namespace ParseHtml.Service
         private readonly MessageDataService _messageDataService;
         private readonly JsonService _jsonService;
         private readonly MediaConverService _mediaConverService;
-        
+
 
         public VoiceNodeService()
         {
@@ -48,11 +48,13 @@ namespace ParseHtml.Service
             {
                 string base64Voice = _mediaConverService.ConvertMediaToBase64(fullVoicePath, "audio");
 
-                var dateContent = _messageDataService.CreateDataObject(date, base64Voice, messageCount);
+                string audioHtml = $"<audio controls><source src=\"{base64Voice}\" type=\"audio/ogg\"></audio>";
+
+                var dateContent = _messageDataService.CreateDataObject(date, audioHtml, messageCount);
                 string jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
                 Console.WriteLine("Formed JSON:");
 
-                _ = _jsonService.SendJsonToApi(jsonData);
+                _jsonService.SendJsonToApi(jsonData);
                 return jsonData;
             }
             return null;

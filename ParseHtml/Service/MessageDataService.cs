@@ -14,7 +14,7 @@ public class MessageDataService
         string iso8601Date = "";
         string format = "dd.MM.yyyy HH:mm:ss 'UTC'K";
         
-        try 
+        try
         {
             DateTimeOffset parsedDate = DateTimeOffset.ParseExact(date, format, CultureInfo.InvariantCulture);
             iso8601Date = parsedDate.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");

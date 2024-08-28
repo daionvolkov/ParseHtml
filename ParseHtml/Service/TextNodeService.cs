@@ -39,7 +39,7 @@ namespace ParseHtml.Service
 
 
                 //Console.WriteLine(jsonData);
-                _ = _jsonService.SendJsonToApi(jsonData);
+                _jsonService.SendJsonToApi(jsonData);
                 
                 return jsonData;
             }

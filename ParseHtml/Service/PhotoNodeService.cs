@@ -25,15 +25,18 @@ namespace ParseHtml.Service
                 string photoHref = photoAnchorNode.GetAttributeValue("href", null);
                 if (!string.IsNullOrEmpty(photoHref))
                 {
-                    var jsonData = ProcessPhotoNode(photoAnchorNode, lastDateValue, messageCount, photoHref);
-                    if (jsonData != null) jsonObjects.Add(jsonData);
-                    messageCount++;
+                    var imgNode = photoAnchorNode.SelectSingleNode(".//img[contains(@class, 'photo')]");
+                    if (imgNode != null)
+                    {
+                        string imgStyle = imgNode.GetAttributeValue("style", string.Empty);
+                        var jsonData = ProcessPhotoNode(photoAnchorNode, lastDateValue, messageCount, photoHref, imgStyle);
+                        if (jsonData != null) jsonObjects.Add(jsonData);
+                        messageCount++;
+                    }
                 }
             }
         }
-
-
-        private string? ProcessPhotoNode(HtmlNode photoNode, string? date, int messageCount, string mediaPath)
+        private string? ProcessPhotoNode(HtmlNode photoNode, string? date, int messageCount, string mediaPath, string imgStyle)
         {
             string? directoryPath = Path.GetDirectoryName(_filePath);
             if (string.IsNullOrEmpty(directoryPath))
@@ -46,15 +49,16 @@ namespace ParseHtml.Service
             {
                 string base64Photo = _mediaConverService.ConvertMediaToBase64(fullPhotoPath, "image");
 
-                var dateContent = _messageDataService.CreateDataObject(date, base64Photo, messageCount);
+                string imgHtml = $"<img class=\"photo\" src=\"{base64Photo}\" style=\"{imgStyle}\" />";
+                var dateContent = _messageDataService.CreateDataObject(date, imgHtml, messageCount);
+
                 string jsonData = JsonConvert.SerializeObject(dateContent, Formatting.Indented);
                 Console.WriteLine("Formed JSON:");
 
-                _ = _jsonService.SendJsonToApi(jsonData);
+                _jsonService.SendJsonToApi(jsonData);
                 return jsonData;
             }
             return null;
         }
-
     }
 }

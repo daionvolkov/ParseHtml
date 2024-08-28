@@ -54,9 +54,9 @@ public class MessageProcessor
                 _photoNodeService.ProcessPhotoNode(bodyNode, lastDateValue, jsonObjects, ref messageCount);
                 _voiceNodeService.ProcessVoiceNode(bodyNode, lastDateValue, jsonObjects, ref messageCount);
 
-                Thread.Sleep(500);
+                //Thread.Sleep(500);
             }
-            _jsonService.SaveJsonToFile(jsonObjects, _outputFilePath);
+            //_jsonService.SaveJsonToFile(jsonObjects, _outputFilePath);
         }
     }
 
